@@ -23,25 +23,32 @@ export default function FeedbackPage() {
   const [satisfaction, setSatisfaction] = useState("")
   const [description, setDescription] = useState("")
   const [loading, setLoading] = useState(false)
-  const [executiveId, setExecutiveId] = useState("")
+  const [executiveUsername, setExecutiveUsername] = useState("")
+  const [executiveType, setExecutiveType] = useState("")
   const router = useRouter()
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("executiveLoggedIn")
-    const empId = localStorage.getItem("executiveId")
+    const username = localStorage.getItem("executiveUsername")
+    const userType = localStorage.getItem("executiveType")
 
     if (!isLoggedIn) {
       router.push("/login")
       return
     }
 
-    if (empId) {
-      setExecutiveId(empId)
+    if (username) {
+      setExecutiveUsername(username)
+    }
+    if (userType) {
+      setExecutiveType(userType)
     }
   }, [router])
 
   const handleLogout = () => {
     localStorage.removeItem("executiveLoggedIn")
+    localStorage.removeItem("executiveUsername")
+    localStorage.removeItem("executiveType")
     localStorage.removeItem("executiveId")
     router.push("/")
   }
@@ -49,26 +56,40 @@ export default function FeedbackPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validate all required fields
     if (!callId || !citizenMobile || !citizenName || !queryType || !satisfaction || !description) {
       alert("Please fill all fields")
       return
     }
 
-    if (citizenMobile.length !== 10) {
+    // Validate mobile number format
+    if (!/^[0-9]{10}$/.test(citizenMobile)) {
       alert("Please enter a valid 10-digit mobile number")
+      return
+    }
+
+    // Validate satisfaction value
+    if (!["satisfied", "not-satisfied"].includes(satisfaction)) {
+      alert("Please select satisfaction level")
+      return
+    }
+
+    // Validate call ID format (simple validation)
+    if (callId.length < 3) {
+      alert("Call ID must be at least 3 characters long")
       return
     }
 
     setLoading(true)
 
     const feedbackData = {
-      callId,
-      citizenMobile,
-      citizenName,
-      queryType,
+      callId: callId.trim(),
+      citizenMobile: citizenMobile.trim(),
+      citizenName: citizenName.trim(),
+      queryType: queryType.trim(),
       satisfaction,
-      description,
-      submittedBy: executiveId,
+      description: description.trim(),
+      submittedBy: executiveUsername,
       submittedAt: new Date().toISOString(),
       status: satisfaction === "satisfied" ? "resolved" : "pending",
     }
@@ -82,8 +103,11 @@ export default function FeedbackPage() {
         body: JSON.stringify(feedbackData),
       })
 
-      if (response.ok) {
+      const result = await response.json()
+
+      if (response.ok && result.success) {
         alert("Feedback recorded successfully!")
+        // Clear form fields
         setCallId("")
         setCitizenMobile("")
         setCitizenName("")
@@ -91,9 +115,10 @@ export default function FeedbackPage() {
         setSatisfaction("")
         setDescription("")
       } else {
-        alert("Failed to record feedback. Please try again.")
+        alert(result.error || "Failed to record feedback. Please try again.")
       }
     } catch (error) {
+      console.error("Error submitting feedback:", error)
       alert("Error recording feedback. Please try again.")
     }
 
@@ -124,7 +149,7 @@ export default function FeedbackPage() {
               <div className="flex items-center space-x-2 bg-blue-100 px-3 py-2 rounded-lg">
                 <Shield className="w-4 h-4 text-blue-600" />
                 <span className="text-sm font-medium text-blue-800">
-                  {t("feedback.welcome")} {executiveId}
+                  {t("feedback.welcome")} {executiveUsername} ({executiveType})
                 </span>
               </div>
               <Button variant="outline" onClick={handleLogout} className="bg-white">
