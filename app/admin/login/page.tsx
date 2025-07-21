@@ -16,25 +16,43 @@ export default function AdminLoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
   const { t } = useLanguage()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
 
     if (!username || !password) {
-      alert("Please enter both username and password")
+      setError("Please enter both username and password")
       return
     }
 
     setLoading(true)
 
-    if (username && password) {
-      localStorage.setItem("adminLoggedIn", "true")
-      localStorage.setItem("adminUsername", username)
-      router.push("/admin/dashboard")
-    } else {
-      alert("Please enter both username and password")
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        localStorage.setItem("adminLoggedIn", "true")
+        localStorage.setItem("adminUsername", username)
+        localStorage.setItem("adminUserId", data.user.id)
+        router.push("/admin/dashboard")
+      } else {
+        setError(data.error || "Invalid credentials. Please check your username and password.")
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      setError("Login failed. Please try again.")
     }
 
     setLoading(false)
@@ -80,6 +98,11 @@ export default function AdminLoginPage() {
               <CardDescription className="text-gray-200">{t("login.adminDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="p-8">
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="username" className="text-sm font-semibold text-gray-700">
@@ -129,9 +152,12 @@ export default function AdminLoginPage() {
                 <div className="flex items-start space-x-3">
                   <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-blue-800">{t("login.demoSystem")}</p>
-                    <p className="text-sm text-blue-700 mt-1">{t("login.demoAdminDesc")}</p>
-                    <p className="text-sm text-blue-600 mt-1 font-medium">{t("login.adminExample")}</p>
+                    <p className="text-sm font-semibold text-blue-800">Administrative Access</p>
+                    <p className="text-sm text-blue-700 mt-1">Use the configured admin credentials to access the dashboard</p>
+                    <div className="text-sm text-blue-600 mt-2 font-medium">
+                      <p>Username: <span className="font-mono bg-blue-100 px-2 py-1 rounded">admin</span></p>
+                      <p className="mt-1">Password: <span className="font-mono bg-blue-100 px-2 py-1 rounded">admin1234</span></p>
+                    </div>
                   </div>
                 </div>
               </div>

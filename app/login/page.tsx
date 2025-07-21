@@ -14,27 +14,46 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 
 export default function ExecutiveLoginPage() {
   const { t } = useLanguage()
-  const [employeeId, setEmployeeId] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
 
-    if (!employeeId || !password) {
-      alert("Please enter both Employee ID and password")
+    if (!username || !password) {
+      setError("Please enter both username and password")
       return
     }
 
     setLoading(true)
 
-    if (employeeId && password) {
-      localStorage.setItem("executiveLoggedIn", "true")
-      localStorage.setItem("executiveId", employeeId)
-      router.push("/feedback")
-    } else {
-      alert("Please enter both Employee ID and password")
+    try {
+      const response = await fetch('/api/executive/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        localStorage.setItem("executiveLoggedIn", "true")
+        localStorage.setItem("executiveUsername", username)
+        localStorage.setItem("executiveType", data.user.type)
+        localStorage.setItem("executiveId", data.user.id)
+        router.push("/feedback")
+      } else {
+        setError(data.error || "Invalid credentials. Please check your username and password.")
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      setError("Login failed. Please try again.")
     }
 
     setLoading(false)
@@ -82,16 +101,16 @@ export default function ExecutiveLoginPage() {
             <CardContent className="p-8">
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="employeeId" className="text-sm font-semibold text-gray-700">
-                    {t("login.employeeId")}
+                  <Label htmlFor="username" className="text-sm font-semibold text-gray-700">
+                    Username
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <Input
-                      id="employeeId"
-                      placeholder={t("login.employeeIdPlaceholder")}
-                      value={employeeId}
-                      onChange={(e) => setEmployeeId(e.target.value)}
+                      id="username"
+                      placeholder="Enter your username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
                       className="pl-12 h-12 border-2 border-gray-200 focus:border-blue-500"
                       required
                     />
@@ -100,14 +119,14 @@ export default function ExecutiveLoginPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
-                    {t("login.password")}
+                    Password
                   </Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <Input
                       id="password"
                       type="password"
-                      placeholder={t("login.passwordPlaceholder")}
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-12 h-12 border-2 border-gray-200 focus:border-blue-500"
@@ -116,12 +135,18 @@ export default function ExecutiveLoginPage() {
                   </div>
                 </div>
 
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   className="w-full h-12 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white font-semibold"
                   disabled={loading}
                 >
-                  {loading ? t("login.loggingIn") : t("login.loginButton")}
+                  {loading ? "Logging in..." : "Login"}
                 </Button>
               </form>
 
@@ -129,9 +154,12 @@ export default function ExecutiveLoginPage() {
                 <div className="flex items-start space-x-3">
                   <Shield className="w-5 h-5 text-green-600 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-green-800">{t("login.demoSystem")}</p>
-                    <p className="text-sm text-green-700 mt-1">{t("login.demoDesc")}</p>
-                    <p className="text-sm text-green-600 mt-1 font-medium">{t("login.example")}</p>
+                    <p className="text-sm font-semibold text-green-800">Authorized Access Only</p>
+                    <p className="text-sm text-green-700 mt-1">Use credentials provided by your administrator</p>
+                    <div className="text-sm text-green-600 mt-2">
+                      <p>• Executive staff: Contact admin for username/password</p>
+                      <p>• Demo users: manager1/manager123, executive1/exec123</p>
+                    </div>
                   </div>
                 </div>
               </div>
